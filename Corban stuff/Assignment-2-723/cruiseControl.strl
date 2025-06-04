@@ -1,0 +1,92 @@
+module cruiseState:
+
+input On, Off, Resume, Set;
+constant SpeedMin : float := 30.0;
+constant SpeedMax : float := 150.0;
+sensor Accel: float;
+sensor Brake: float;
+sensor Speed: float;
+output CruiseSpeed: float;
+output ThrottleCmd: float;
+output CruiseState: string;
+
+var state : enum {OFF, ON, STDBY, DISABLE} := OFF;
+
+loop
+	% states are OFF, ON, STDBY, DISABLE
+	if state = OFF then
+		% Cruise Control is off
+		if On = 1 then
+			CruiseSpeed := Speed;
+			state := ON;
+		end if;
+	end if;
+	if state = ON then
+		%Cruise Control is on
+		if Brake >= 3.0 then
+			state := STDBY;
+		elsif Accel >= 3.0 then
+			state := DISABLE;
+		elsif Off = 1 then
+			state := OFF;
+		end if;
+	end if;
+	if state = DISABLE then
+		%Cruise Control is disabled
+		if Off = 1 then
+			state := OFF;
+		elsif Resume = 1 then
+			state := ON;
+		elsif Set = 1 then
+			CruiseSpeed := Speed;
+			state := ON;
+		elsif Accel < 3.0 and Speed >= SpeedMin and Speed <= SpeedMax then
+			state := ON
+		end if;
+	end if;
+	if state = STDBY then
+		%Cruise Con trol is at standby
+		if Accel >= 3.0 or Speed <= SpeedMin or Speed >= SpeedMax then
+			state:= DISABLE;
+		elsif Accel < 3.0 and Speed >= SpeedMin and Speed <= SpeedMax then
+			state := ON
+		end if;
+	end if;
+	
+end loop		
+
+end module
+
+module speedAdjust:
+
+input QuickAccel, QuickDecel;
+input CruiseSpeed: float;
+input CruiseState: string;
+output ThrottleCmd: float;
+
+sensor Speed: float;
+procedure regulateThrottle(boolean isGoingOn, float cruiseSpeed, float vehicleSpeed) returns float;);
+
+loop
+
+	var throttleOut : float;
+	var temp: boolean;
+	if QuickAccel = 1 then
+		if CruiseState := ON then
+			temp := true;
+			throttleOut := regulateThrottle(temp, CruiseSpeed + 1, Speed);
+			emit ThrottleCmd(throttleOut);
+		end if;
+	end if;
+	
+	if QuickDecel = 1 then
+		if CruiseState := ON then
+			temp := true;
+			throttleOut := regulateThrottle(temp, CruiseSpeed - 1, Speed);
+			emit ThrottleCmd(throttleOut);
+		end if;
+	end if;
+		
+end loop
+
+end module
