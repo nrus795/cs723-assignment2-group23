@@ -2,6 +2,7 @@
 #define CRUISECONTROL_DATA_H
 
 // #include <stdbool.h>
+#include <csimul.h>
 
 float regulateThrottle(boolean isGoingOn, float cruiseSpeed, float vehicleSpeed);
 float saturateThrottle(float throttleIn, boolean* saturate);

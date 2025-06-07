@@ -16,9 +16,9 @@ output CruiseState: integer;
 %procedure regulateThrottle(boolean, float, float);
 function regulateThrottle(boolean, float, float) : float;
 
-%constant state = 0 : integer;
-%constant throttleOut = 0: float;
-%constant temp = false: boolean;
+constant state = 0 : integer;
+constant throttleOut = 0.0f : float;
+constant temp = false: boolean;
 
 loop
 	var state: integer,
