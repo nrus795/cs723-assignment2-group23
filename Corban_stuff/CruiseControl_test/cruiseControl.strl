@@ -4,7 +4,6 @@ input On, Off, Resume, Set;
 input QuickAccel, QuickDecel;
 constant SpeedMin = 30.0f : float;
 constant SpeedMax = 150.0f : float;
-constant SetSpeed = 0.0f : float;
 sensor Accel: float;
 sensor Brake: float;
 sensor Speed: float;
@@ -15,17 +14,18 @@ output CruiseState: integer;
 
 function regulateThrottle(boolean, float, float) : float;
 
-loop
-	var state: integer,
+var
+	state: integer,        % 0=OFF, 1=ON, 2=STANDBY, 3=DISABLE
 	cruiseSpeed: float,
 	throttleOut: float,
 	temp: boolean
-	in
+in
 	state := 0;
 	cruiseSpeed := 0.0f;
 	throttleOut := 0.0f;
 	temp := false;
-	% states are OFF, ON, STDBY, DISABLE
+	loop
+	% OFF state
 	if state = 0 then
 		% Cruise Control is off
 		if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
@@ -41,23 +41,23 @@ loop
 		%Cruise Control is on
 		present Off then
 			state := 0;
-			emit CruiseState(0);
+			%emit CruiseState(0);
 		end present;
 		if ?Brake >= 3.0f then
 			state := 2;
-			emit CruiseState(2);
+			%emit CruiseState(2);
 		elsif ?Accel >= 3.0f then
 			state := 3;
-			emit CruiseState(3);
+			%emit CruiseState(3);
 		end if;
-		
+
 		present QuickAccel then
 			temp := true;
 			throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
-			emit ThrottleCmd(throttleOut);
+			%emit ThrottleCmd(throttleOut);
 			cruiseSpeed := cruiseSpeed + 1.0f;
 		end present;
-		
+
 		present QuickDecel then
 				temp := true;
 				throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
@@ -70,18 +70,17 @@ loop
 		%Cruise Control is disabled
 		present Off then
 			state := 0;
-			emit CruiseState(0);
+			%emit CruiseState(0);
 		end present;
 		present Resume then
 			state := 1;
-			emit CruiseState(1);
+			%emit CruiseState(1);
 		end present;
 		present Set then
 			state := 1;
 			cruiseSpeed := ?Speed;
-			emit CruiseState(1);
+			%emit CruiseState(1);
 		end present;
-		
 		if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
 			state := 1;
 			emit CruiseState(1);
@@ -100,15 +99,13 @@ loop
 			emit CruiseState(1);
 		end if;
 		throttleOut := ?Accel;
-		
 	end if;
-	
+	emit CruiseState(state);
 	emit ThrottleCmd(throttleOut);
 	emit CruiseSpeed(cruiseSpeed);
+
 	pause;
-	
-end var
-end loop		
+	end loop;
+end var;
 
 end module
-
