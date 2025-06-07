@@ -28,16 +28,16 @@ loop
 	% states are OFF, ON, STDBY, DISABLE
 	if state = 0 then
 		% Cruise Control is off
-		present On then
-			if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+		if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+			present On then
 				cruiseSpeed := ?Speed;
 				state := 1;
 				emit CruiseState(1);
-			end if;
-		end present;
+			end present;
+		end if;
 		throttleOut := ?Accel;
-	end if;
-	if state = 1 then
+	
+	elsif state = 1 then
 		%Cruise Control is on
 		present Off then
 			state := 0;
@@ -52,25 +52,21 @@ loop
 		end if;
 		
 		present QuickAccel then
-			if state = 1 then
-				temp := true;
-				throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
-				emit ThrottleCmd(throttleOut);
-				cruiseSpeed := cruiseSpeed + 1.0f;
-			end if;
+			temp := true;
+			throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
+			emit ThrottleCmd(throttleOut);
+			cruiseSpeed := cruiseSpeed + 1.0f;
 		end present;
 		
 		present QuickDecel then
-			if state = 1 then
 				temp := true;
 				throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
 				emit ThrottleCmd(throttleOut);
 				cruiseSpeed := cruiseSpeed - 1.0f;
-			end if;
 		end present;
 		
-	end if;
-	if state = 3 then
+	
+	elsif state = 3 then
 		%Cruise Control is disabled
 		present Off then
 			state := 0;
@@ -93,8 +89,8 @@ loop
 		
 		throttleOut := ?Accel;
 		
-	end if;
-	if state = 2 then
+	
+	elsif state = 2 then
 		%Cruise Control is at standby
 		if ?Accel >= 3.0f or ?Speed <= SpeedMin or ?Speed >= SpeedMax then
 			state:= 3;
