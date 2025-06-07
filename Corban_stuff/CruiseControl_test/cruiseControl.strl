@@ -54,14 +54,14 @@ in
 		present QuickAccel then
 			temp := true;
 			throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
-			emit ThrottleCmd(throttleOut);
+			%emit ThrottleCmd(throttleOut);
 			cruiseSpeed := cruiseSpeed + 1.0f;
 		end present;
 
 		present QuickDecel then
 			temp := true;
 			throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
-			emit ThrottleCmd(throttleOut);
+			%emit ThrottleCmd(throttleOut);
 			cruiseSpeed := cruiseSpeed - 1.0f;
 		end present;
 	end if;
@@ -104,7 +104,7 @@ in
 	emit CruiseSpeed(cruiseSpeed);
 
 	pause;
-	end loop
-end var
+	end loop;
+end var;
 
 end module
