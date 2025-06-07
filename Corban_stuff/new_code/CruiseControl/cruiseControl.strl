@@ -13,7 +13,8 @@ output CruiseSpeed: float;
 output ThrottleCmd: float;
 output CruiseState: integer;
 
-procedure regulateThrottle(float)(boolean, float, float);
+%procedure regulateThrottle(boolean, float, float);
+function regulateThrottle(boolean, float, float) : float;
 
 %constant state = 0 : integer;
 %constant throttleOut = 0: float;
@@ -58,7 +59,7 @@ loop
 		present QuickAccel then
 			if state = 1 then
 				temp := true;
-				call regulateThrottle(throttleOut)(temp, cruiseSpeed + 1.0f, ?Speed);
+				throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
 				emit ThrottleCmd(throttleOut);
 				cruiseSpeed := cruiseSpeed + 1.0f;
 			end if;
@@ -67,7 +68,7 @@ loop
 		present QuickDecel then
 			if state = 1 then
 				temp := true;
-				call regulateThrottle(throttleOut)(temp, cruiseSpeed - 1.0f, ?Speed);
+				throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
 				emit ThrottleCmd(throttleOut);
 				cruiseSpeed := cruiseSpeed - 1.0f;
 			end if;
