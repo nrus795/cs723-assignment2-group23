@@ -1,0 +1,126 @@
+module cruiseState:
+
+input On, Off, Resume, Set;
+input QuickAccel, QuickDecel;
+constant SpeedMin = 30.0f : float;
+constant SpeedMax = 150.0f : float;
+constant SetSpeed = 0.0f : float;
+constant SpeedInc = 1.0f : float;
+constant PedalMin = 3.0f : float;
+sensor Accel: float;
+sensor Brake: float;
+sensor Speed: float;
+output CruiseSpeed: float;
+output ThrottleCmd: float;
+output CruiseState: integer;
+function regulateThrottle(boolean, float, float) : float;
+var
+	state: integer,
+	cruiseSpeed: float,
+	throttleOut: float,
+	temp: boolean
+in
+	state := 0;
+	cruiseSpeed := 0.0f;
+	throttleOut := 0.0f;
+	temp := false;
+	loop
+		trap switchState in
+
+			% states are OFF, ON, STDBY, DISABLE
+			if state = 0 then
+				% Cruise Control is off
+				if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+					present On then
+						cruiseSpeed := ?Speed;
+						state := 1;
+						emit CruiseState(1);
+					end present;
+				end if;
+				throttleOut := ?Accel;
+			exit switchState
+			elsif state = 1 then
+				%Cruise Control is on
+				present Off then
+					state := 0;
+					emit CruiseState(0);
+				end present;
+				present Set then
+					cruiseSpeed := ?Speed;
+				end present;
+				if ?Brake >= PedalMin then
+					state := 2;
+					emit CruiseState(2);
+				elsif ?Accel >= PedalMin then
+					state := 3;
+					emit CruiseState(3);
+				end if;
+				throttleOut := regulateThrottle(temp, cruiseSpeed, ?Speed);
+				present QuickAccel then
+				
+					if (cruiseSpeed + SpeedInc) > SpeedMax then
+						temp := true;
+						cruiseSpeed := SpeedMax;
+						throttleOut := regulateThrottle(temp, cruiseSpeed, ?Speed);
+					else
+						temp := true;
+						throttleOut := regulateThrottle(temp, cruiseSpeed + SpeedInc, ?Speed);
+						%emit ThrottleCmd(throttleOut);
+						cruiseSpeed := cruiseSpeed + SpeedInc;
+					end if;
+				end present;
+
+				present QuickDecel then
+					if (cruiseSpeed - SpeedInc) < SpeedMin then
+						temp := true;
+						cruiseSpeed := SpeedMin;
+						throttleOut := regulateThrottle(temp, cruiseSpeed, ?Speed);
+					else
+						temp := true;
+						throttleOut := regulateThrottle(temp, cruiseSpeed - SpeedInc, ?Speed);
+						%emit ThrottleCmd(throttleOut);
+						cruiseSpeed := cruiseSpeed - SpeedInc;
+					end if;
+				end present;
+				%emit ThrottleCmd(throttleOut);
+			exit switchState
+			elsif state = 3 then
+				%Cruise Control is disabled
+
+				if ?Accel < PedalMin and ?Speed >= SpeedMin and ?Speed <= SpeedMax and ?Brake < PedalMin then
+
+						state := 1;
+						emit CruiseState(1);
+
+				end if;
+
+				throttleOut := ?Accel;
+
+			exit switchState
+			elsif state = 2 then
+				%Cruise Control is at standby
+				if ?Brake >= PedalMin then
+					pause;
+				elsif ?Accel >= PedalMin or ?Speed <= SpeedMin or ?Speed >= SpeedMax then
+					state:= 3;
+					emit CruiseState(3);
+				elsif ?Accel < PedalMin and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+					present Resume then
+						state := 1;
+						emit CruiseState(1);
+					end present;
+				end if;
+				throttleOut := ?Accel;
+			exit switchState
+			end if;
+		end trap;
+		emit ThrottleCmd(throttleOut);
+		emit CruiseSpeed(cruiseSpeed);
+		pause;
+		
+	end loop
+end var
+
+
+end module
+
