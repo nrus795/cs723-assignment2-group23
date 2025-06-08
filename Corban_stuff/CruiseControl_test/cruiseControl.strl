@@ -8,11 +8,9 @@ constant SetSpeed = 0.0f : float;
 sensor Accel: float;
 sensor Brake: float;
 sensor Speed: float;
-
 output CruiseSpeed: float;
 output ThrottleCmd: float;
 output CruiseState: integer;
-
 function regulateThrottle(boolean, float, float) : float;
 var
 	state: integer,
@@ -25,89 +23,90 @@ in
 	throttleOut := 0.0f;
 	temp := false;
 	loop
+		trap switchState in
 
+			% states are OFF, ON, STDBY, DISABLE
+			if state = 0 then
+				% Cruise Control is off
+				if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+					present On then
+						cruiseSpeed := ?Speed;
+						state := 1;
+						emit CruiseState(1);
+					end present;
+				end if;
+				throttleOut := ?Accel;
+			exit switchState
+			elsif state = 1 then
+				%Cruise Control is on
+				present Off then
+					state := 0;
+					emit CruiseState(0);
+				end present;
+				if ?Brake >= 3.0f then
+					state := 2;
+					emit CruiseState(2);
+				elsif ?Accel >= 3.0f then
+					state := 3;
+					emit CruiseState(3);
+				end if;
+				%throttleOut := regulateThrottle(temp, cruiseSpeed, ?Speed);
+				present QuickAccel then
+					temp := true;
+					throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
+					%emit ThrottleCmd(throttleOut);
+					cruiseSpeed := cruiseSpeed + 1.0f;
+				end present;
 
-		% states are OFF, ON, STDBY, DISABLE
-		if state = 0 then
-			% Cruise Control is off
-			if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
-				present On then
-					cruiseSpeed := ?Speed;
+				present QuickDecel then
+						temp := true;
+						throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
+						%emit ThrottleCmd(throttleOut);
+						cruiseSpeed := cruiseSpeed - 1.0f;
+				end present;
+				%emit ThrottleCmd(throttleOut);
+			exit switchState
+			elsif state = 3 then
+				%Cruise Control is disabled
+				present Off then
+					state := 0;
+					emit CruiseState(0);
+				end present;
+				present Resume then
 					state := 1;
 					emit CruiseState(1);
 				end present;
+				present Set then
+					state := 1;
+					cruiseSpeed := ?Speed;
+					emit CruiseState(1);
+				end present;
+
+				if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+					state := 1;
+					emit CruiseState(1);
+				end if;
+
+				throttleOut := ?Accel;
+
+			exit switchState
+			elsif state = 2 then
+				%Cruise Control is at standby
+				if ?Accel >= 3.0f or ?Speed <= SpeedMin or ?Speed >= SpeedMax then
+					state:= 3;
+					emit CruiseState(3);
+				elsif ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
+					state := 1;
+					emit CruiseState(1);
+				end if;
+				throttleOut := ?Accel;
+			exit switchState
 			end if;
-			throttleOut := ?Accel;
-
-		elsif state = 1 then
-			%Cruise Control is on
-			present Off then
-				state := 0;
-				emit CruiseState(0);
-			end present;
-			if ?Brake >= 3.0f then
-				state := 2;
-				emit CruiseState(2);
-			elsif ?Accel >= 3.0f then
-				state := 3;
-				emit CruiseState(3);
-			end if;
-
-			present QuickAccel then
-				temp := true;
-				throttleOut := regulateThrottle(temp, cruiseSpeed + 1.0f, ?Speed);
-				%emit ThrottleCmd(throttleOut);
-				cruiseSpeed := cruiseSpeed + 1.0f;
-			end present;
-
-			present QuickDecel then
-					temp := true;
-					throttleOut := regulateThrottle(temp, cruiseSpeed - 1.0f, ?Speed);
-					%emit ThrottleCmd(throttleOut);
-					cruiseSpeed := cruiseSpeed - 1.0f;
-			end present;
-
-
-		elsif state = 3 then
-			%Cruise Control is disabled
-			present Off then
-				state := 0;
-				emit CruiseState(0);
-			end present;
-			present Resume then
-				state := 1;
-				emit CruiseState(1);
-			end present;
-			present Set then
-				state := 1;
-				cruiseSpeed := ?Speed;
-				emit CruiseState(1);
-			end present;
-
-			if ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
-				state := 1;
-				emit CruiseState(1);
-			end if;
-
-			throttleOut := ?Accel;
-
-
-		elsif state = 2 then
-			%Cruise Control is at standby
-			if ?Accel >= 3.0f or ?Speed <= SpeedMin or ?Speed >= SpeedMax then
-				state:= 3;
-				emit CruiseState(3);
-			elsif ?Accel < 3.0f and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
-				state := 1;
-				emit CruiseState(1);
-			end if;
-			throttleOut := ?Accel;
-
-		end if;
-
+		end trap;
 		emit ThrottleCmd(throttleOut);
 		emit CruiseSpeed(cruiseSpeed);
 		pause;
+		
 	end loop
 end var
 
