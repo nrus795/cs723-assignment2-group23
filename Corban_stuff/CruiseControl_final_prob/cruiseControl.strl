@@ -34,7 +34,6 @@ in
 					present On then
 						cruiseSpeed := ?Speed;
 						state := 1;
-						emit CruiseState(1);
 					end present;
 				end if;
 				throttleOut := ?Accel;
@@ -42,18 +41,15 @@ in
 			elsif state = 1 then
 				%Cruise Control is on
 				present Off then
-					state := 0;
-					emit CruiseState(0);
+					state := 0;					
 				end present;
 				present Set then
 					cruiseSpeed := ?Speed;
 				end present;
 				if ?Brake >= PedalMin then
 					state := 2;
-					emit CruiseState(2);
 				elsif ?Accel >= PedalMin then
 					state := 3;
-					emit CruiseState(3);
 				end if;
 				throttleOut := regulateThrottle(temp, cruiseSpeed, ?Speed);
 				present QuickAccel then
@@ -86,16 +82,10 @@ in
 			exit switchState
 			elsif state = 3 then
 				%Cruise Control is disabled
-
 				if ?Accel < PedalMin and ?Speed >= SpeedMin and ?Speed <= SpeedMax and ?Brake < PedalMin then
-
-						state := 1;
-						emit CruiseState(1);
-
+					state := 1;
 				end if;
-
 				throttleOut := ?Accel;
-
 			exit switchState
 			elsif state = 2 then
 				%Cruise Control is at standby
@@ -103,11 +93,9 @@ in
 					pause;
 				elsif ?Accel >= PedalMin or ?Speed <= SpeedMin or ?Speed >= SpeedMax then
 					state:= 3;
-					emit CruiseState(3);
 				elsif ?Accel < PedalMin and ?Speed >= SpeedMin and ?Speed <= SpeedMax then
 					present Resume then
 						state := 1;
-						emit CruiseState(1);
 					end present;
 				end if;
 				throttleOut := ?Accel;
@@ -116,6 +104,7 @@ in
 		end trap;
 		emit ThrottleCmd(throttleOut);
 		emit CruiseSpeed(cruiseSpeed);
+		emit CruiseState(state);
 		pause;
 		
 	end loop
